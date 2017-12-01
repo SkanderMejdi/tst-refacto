@@ -25,9 +25,10 @@ class TemplateManager
 
     private function computeText($text, array $data)
     {
+        $replace = [];
         $APPLICATION_CONTEXT = ApplicationContext::getInstance();
-
         $quote = (isset($data['quote']) and $data['quote'] instanceof Quote) ? $data['quote'] : null;
+        $user = (isset($data['user']) and ($data['user'] instanceof User)) ? $data['user'] : $APPLICATION_CONTEXT->getCurrentUser();
 
         if ($quote) {
             $site = SiteRepository::getInstance()->getById($quote->siteId);
@@ -35,23 +36,20 @@ class TemplateManager
             $quote = QuoteRepository::getInstance()->getById($quote->id);
 
             $link = $site->url.'/'.$destination->countryName.'/quote/'.$quote->id;
-            $replace = [
+            $replace = array_merge($replace, [
                 '[quote:summary_html]' => Quote::renderHtml($quote),
                 '[quote:summary]' => Quote::renderText($quote),
                 '[quote:destination_name]' => $destination->countryName,
                 '[quote:destination_link]' => $link
-            ];
-            $text = $this->replaceAll($replace, $text);
+            ]);
         }
 
-        $_user = (isset($data['user']) and ($data['user'] instanceof User)) ? $data['user'] : $APPLICATION_CONTEXT->getCurrentUser();
-        if ($_user) {
-            $replace = [
-                '[user:first_name]' => ucfirst(mb_strtolower($_user->firstname))
-            ];
-            $text = $this->replaceAll($replace, $text);
+        if ($user) {
+            $replace = array_merge($replace, [
+                '[user:first_name]' => ucfirst(mb_strtolower($user->firstname))
+            ]);
         }
 
-        return $text;
+        return $this->replaceAll($replace, $text);
     }
 }
