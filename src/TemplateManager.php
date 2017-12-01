@@ -15,53 +15,41 @@ class TemplateManager
         return $replaced;
     }
 
+    private function replaceAll($replace, $text)
+    {
+        foreach ($replace as $search => $value) {
+            (strpos($text, $search) !== false) and $text = str_replace($search, $value, $text);
+        }
+        return $text;
+    }
+
     private function computeText($text, array $data)
     {
         $APPLICATION_CONTEXT = ApplicationContext::getInstance();
 
         $quote = (isset($data['quote']) and $data['quote'] instanceof Quote) ? $data['quote'] : null;
 
-        if ($quote)
-        {
+        if ($quote) {
             $site = SiteRepository::getInstance()->getById($quote->siteId);
             $destination = DestinationRepository::getInstance()->getById($quote->destinationId);
             $quote = QuoteRepository::getInstance()->getById($quote->id);
 
-            $containsSummaryHtml = strpos($text, '[quote:summary_html]');
-            $containsSummary     = strpos($text, '[quote:summary]');
-
-            if ($containsSummaryHtml !== false || $containsSummary !== false) {
-                if ($containsSummaryHtml !== false) {
-                    $text = str_replace(
-                        '[quote:summary_html]',
-                        Quote::renderHtml($quote),
-                        $text
-                    );
-                }
-                if ($containsSummary !== false) {
-                    $text = str_replace(
-                        '[quote:summary]',
-                        Quote::renderText($quote),
-                        $text
-                    );
-                }
-            }
-
-            (strpos($text, '[quote:destination_name]') !== false) and $text = str_replace('[quote:destination_name]',$destination->countryName,$text);
+            $link = $site->url.'/'.$destination->countryName.'/quote/'.$quote->id;
+            $replace = [
+                '[quote:summary_html]' => Quote::renderHtml($quote),
+                '[quote:summary]' => Quote::renderText($quote),
+                '[quote:destination_name]' => $destination->countryName,
+                '[quote:destination_link]' => $link
+            ];
+            $text = $this->replaceAll($replace, $text);
         }
 
-        if (strpos($text, '[quote:destination_link]') !== false)
-            $text = str_replace('[quote:destination_link]', $site->url . '/' . $destination->countryName . '/quote/' . $quote->id, $text);
-        else
-            $text = str_replace('[quote:destination_link]', '', $text);
-
-        /*
-         * USER
-         * [user:*]
-         */
-        $_user  = (isset($data['user'])  and ($data['user']  instanceof User))  ? $data['user']  : $APPLICATION_CONTEXT->getCurrentUser();
-        if($_user) {
-            (strpos($text, '[user:first_name]') !== false) and $text = str_replace('[user:first_name]'       , ucfirst(mb_strtolower($_user->firstname)), $text);
+        $_user = (isset($data['user']) and ($data['user'] instanceof User)) ? $data['user'] : $APPLICATION_CONTEXT->getCurrentUser();
+        if ($_user) {
+            $replace = [
+                '[user:first_name]' => ucfirst(mb_strtolower($_user->firstname))
+            ];
+            $text = $this->replaceAll($replace, $text);
         }
 
         return $text;
